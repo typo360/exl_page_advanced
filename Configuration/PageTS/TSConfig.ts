@@ -1,0 +1,1 @@
+TCEFORM.pageHeaderColumns.1.list = --div--;General,categories
