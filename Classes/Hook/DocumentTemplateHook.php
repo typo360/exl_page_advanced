@@ -24,10 +24,8 @@ namespace TYPO3\ExlPageAdvanced\Hook;
  *  This copyright notice MUST APPEAR in all copies of the script!
  ***************************************************************/
 
-use \TYPO3\CMS\Core\Utility\DebugUtility;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
-use TYPO3\CMS\Core\TypoScript\Parser\TypoScriptParser;
 
 /**
  * DocumentTemplateHook
@@ -36,8 +34,6 @@ use TYPO3\CMS\Core\TypoScript\Parser\TypoScriptParser;
  * @subpackage tx_exlpageadvanced
  */
 class DocumentTemplateHook {
-	private $acceptedDoktypes = array(1, 42, 43, 44, 45);
-
 	/**
 	 * Hook on : $GLOBALS['TYPO3_CONF_VARS']['SC_OPTIONS']['t3lib/class.t3lib_tceforms.php']['getMainFieldsClass']
 	 *
@@ -60,97 +56,94 @@ class DocumentTemplateHook {
 		}
 	}
 
-	private function getPageEditIframe() {
+	private function getPageEditIframe($params) {
 		// Only the main "Page" module doesn't throw the "M" var.
 		if (!GeneralUtility::_GET('M') && !GeneralUtility::_GET('returnUrl') && $this->uid > 0) {
 			$page = BackendUtility::getRecord('pages', $this->uid, 'doktype');
 
-			// TODO : non
-			if (in_array($page['doktype'], $this->acceptedDoktypes)) {
-				$tsConf = BackendUtility::getPagesTSconfig($this->uid);
+			$tsConf = BackendUtility::getPagesTSconfig($this->uid);
 
-				if (isset($tsConf['TCEFORM.']['pageHeaderColumns.'][$page['doktype'] . '.']['list'])) {
-					$columns = $tsConf['TCEFORM.']['pageHeaderColumns.'][$page['doktype'] . '.']['list'];
+			if (isset($tsConf['TCEFORM.']['pageHeaderColumns.'][$page['doktype'] . '.']['list'])) {
+				$columns = $tsConf['TCEFORM.']['pageHeaderColumns.'][$page['doktype'] . '.']['list'];
 
-					$iframe = '
-						<script type="text/javascript">
-							function toggleBody() {
-								if (document.getElementById("toggle-page-frame").className == "t3-icon t3-icon-actions t3-icon-actions-view t3-icon-view-table-collapse") {
-									document.getElementById("page-frame").contentDocument.getElementById("typo3-docbody").style.display = "none";
-									document.getElementById("toggle-page-frame").className = "t3-icon t3-icon-actions t3-icon-actions-view t3-icon-view-table-expand";
-									ajaxSwitchPagePanel("NO");
-								}
-								else {
-									document.getElementById("page-frame").contentDocument.getElementById("typo3-docbody").style.display = "block";
-									document.getElementById("toggle-page-frame").className = "t3-icon t3-icon-actions t3-icon-actions-view t3-icon-view-table-collapse";
-									ajaxSwitchPagePanel("YES");
-								}
-
-								refreshIframeHeight();
-
-								return false;
+				$iframe = '
+					<script type="text/javascript">
+						function toggleBody() {
+							if (document.getElementById("toggle-page-frame").className == "t3-icon t3-icon-actions t3-icon-actions-view t3-icon-view-table-collapse") {
+								document.getElementById("page-frame").contentDocument.getElementById("typo3-docbody").style.display = "none";
+								document.getElementById("toggle-page-frame").className = "t3-icon t3-icon-actions t3-icon-actions-view t3-icon-view-table-expand";
+								ajaxSwitchPagePanel("NO");
+							}
+							else {
+								document.getElementById("page-frame").contentDocument.getElementById("typo3-docbody").style.display = "block";
+								document.getElementById("toggle-page-frame").className = "t3-icon t3-icon-actions t3-icon-actions-view t3-icon-view-table-collapse";
+								ajaxSwitchPagePanel("YES");
 							}
 
-							function ajaxSwitchPagePanel(flag) {
-								document.getElementById("page-frame").contentWindow.TYPO3.jQuery.ajax({
-									async: "true",
-									url: "ajax.php",
-									type: "GET",
+							refreshIframeHeight();
 
-									data: {
-										ajaxID: "exl_utilities::ajaxDispatcher",
-										request: {
-											id:			3,
-											function: "TYPO3\\\VersaillesUtilities\\\Hook\\\DocumentTemplateHook->switchPagePanel",
-											arguments:		{
-												flag: flag
-											}
+							return false;
+						}
+
+						function ajaxSwitchPagePanel(flag) {
+							document.getElementById("page-frame").contentWindow.TYPO3.jQuery.ajax({
+								async: "true",
+								url: "ajax.php",
+								type: "GET",
+
+								data: {
+									ajaxID: "exl_utilities::ajaxDispatcher",
+									request: {
+										id:			3,
+										function: "TYPO3\\\VersaillesUtilities\\\Hook\\\DocumentTemplateHook->switchPagePanel",
+										arguments:		{
+											flag: flag
 										}
 									}
-								});
-							}
-
-							function refreshIframeHeight() {
-								var height = 25;
-								if (document.getElementById("toggle-page-frame").className == "t3-icon t3-icon-actions t3-icon-actions-view t3-icon-view-table-collapse") {
-									var height = document.getElementById("page-frame").contentDocument.getElementById("typo3-inner-docbody").clientHeight + 100;
 								}
+							});
+						}
 
-								document.getElementById("page-frame").style.height = height + "px";
+						function refreshIframeHeight() {
+							var height = 25;
+							if (document.getElementById("toggle-page-frame").className == "t3-icon t3-icon-actions t3-icon-actions-view t3-icon-view-table-collapse") {
+								var height = document.getElementById("page-frame").contentDocument.getElementById("typo3-inner-docbody").clientHeight + 100;
 							}
 
-							document.onreadystatechange = function () {
-								var state = document.readyState;
-								if (state == "complete") {
-									setInterval(function() { refreshIframeHeight(); }, 200);
-								}
+							document.getElementById("page-frame").style.height = height + "px";
+						}
+
+						document.onreadystatechange = function () {
+							var state = document.readyState;
+							if (state == "complete") {
+								setInterval(function() { refreshIframeHeight(); }, 200);
 							}
-						</script>
-						';
+						}
+					</script>
+					';
 
-					$toggle = ($GLOBALS['BE_USER']->uc['tx_versaillesutilities_page_panel'] == 'YES') ? 't3-icon-view-table-collapse' : 't3-icon-view-table-expand';
+				$toggle = ($GLOBALS['BE_USER']->uc['tx_versaillesutilities_page_panel'] == 'YES') ? 't3-icon-view-table-collapse' : 't3-icon-view-table-expand';
 
-					$iframe .= '
-						<div style="position: fixed; width: 100%; z-index: 512;">
-							<div class="typo3-docheader-buttons" style="padding-bottom: 5px;">
-								<div class="left">
-									<span id="toggle-page-frame" class="t3-icon t3-icon-actions t3-icon-actions-view ' . $toggle . '">
-										<input type="image" onclick="return toggleBody();" class="c-inputButton" src="clear.gif" title="Ouvrir/Fermer le bloc d\'informations complémentaires">
-									</span>
-									<span class="t3-icon t3-icon-actions t3-icon-actions-document t3-icon-document-save">
-										<input onclick="document.getElementById(\'page-frame\').contentDocument.getElementsByName(\'_savedok\')[0].click(); return false;" type="image" class="c-inputButton" src="clear.gif" title="Save document">
-									</span>
-								</div>
+				$iframe .= '
+					<div style="position: fixed; width: 100%; z-index: 512;">
+						<div class="typo3-docheader-buttons" style="padding-bottom: 5px;">
+							<div class="left">
+								<span id="toggle-page-frame" class="t3-icon t3-icon-actions t3-icon-actions-view ' . $toggle . '">
+									<input type="image" onclick="return toggleBody();" class="c-inputButton" src="clear.gif" title="Ouvrir/Fermer le bloc d\'informations complémentaires">
+								</span>
+								<span class="t3-icon t3-icon-actions t3-icon-actions-document t3-icon-document-save">
+									<input onclick="document.getElementById(\'page-frame\').contentDocument.getElementsByName(\'_savedok\')[0].click(); return false;" type="image" class="c-inputButton" src="clear.gif" title="Save document">
+								</span>
 							</div>
 						</div>
+					</div>
 
-						<div style="">
-							<iframe id="page-frame" name="content" style="width: 100%; height: 100%;" frameborder="0" src="../../../alt_doc.php?in-page-edit-iframe=1&edit[pages][' . $this->uid . ']=edit&columns=' . $columns . '&doktype=' . $page['doktype'] . '&noView=0&returnUrl=close.html"></iframe>
-						</div>
-						';
+					<div style="">
+						<iframe id="page-frame" name="content" style="width: 100%; height: 100%;" frameborder="0" src="../../../alt_doc.php?in-page-edit-iframe=1&edit[pages][' . $this->uid . ']=edit&columns=' . $columns . '&doktype=' . $page['doktype'] . '&noView=0&returnUrl=close.html"></iframe>
+					</div>
+					';
 
-					$params['moduleBody'] = str_replace('<div id="typo3-inner-docbody">', $iframe . '<div id="typo3-inner-docbody">', $params['moduleBody']);
-				}
+				$params['moduleBody'] = str_replace('<div id="typo3-inner-docbody">', $iframe . '<div id="typo3-inner-docbody">', $params['moduleBody']);
 			}
 		}
 	}
@@ -184,7 +177,7 @@ class DocumentTemplateHook {
 //			$params['markers']['BUTTONLIST_LEFT'] = '<div style="display: none;">' . $params['markers']['BUTTONLIST_LEFT'] . '</div>';
 		}
 		else {
-			$this->getPageEditIframe();
+			$this->getPageEditIframe($params);
 		}
 	}
 
